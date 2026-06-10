@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FlowSentry — Prototype · Kazi Amlan, PM</title>
+<meta name="description" content="Interactive product prototype: client-workflow monitoring for automation agencies. Designed by Kazi Nahian Haider Amlan.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0D1220; --surface:#141B2E; --surface2:#1A2340; --raise:#202B4E;
+    --line:#243052; --line-soft:#1C2746;
+    --text:#E9EDF8; --muted:#8C97BA; --faint:#5E6A8F;
+    --brand:#8B93FF; --brand-deep:#4F46E5;
+    --ok:#34D399; --ok-dim:#10543E;
+    --fail:#F87171; --fail-dim:#5C2330;
+    --stale:#FBBF24; --stale-dim:#5C4716;
+    --radius:10px;
+    --font-display:'Space Grotesk',sans-serif;
+    --font-body:'Inter',system-ui,sans-serif;
+    --font-mono:'IBM Plex Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{font-size:15px}
+  body{background:var(--bg);color:var(--text);font-family:var(--font-body);line-height:1.5;
+       background-image:radial-gradient(1100px 500px at 85% -10%, rgba(79,70,229,.14), transparent 60%);}
+  button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+  a{color:var(--brand);text-decoration:none}
+  :focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:4px}
+  @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+  /* ===== App shell ===== */
+  .shell{display:grid;grid-template-columns:218px 1fr;min-height:100vh}
+  .side{border-right:1px solid var(--line-soft);padding:20px 14px;display:flex;flex-direction:column;gap:4px;
+        position:sticky;top:0;height:100vh}
+  .logo{display:flex;align-items:center;gap:9px;font-family:var(--font-display);font-weight:700;font-size:1.08rem;
+        letter-spacing:.01em;padding:4px 8px 18px}
+  .logo-mark{width:24px;height:24px;border-radius:7px;background:linear-gradient(135deg,var(--brand-deep),var(--brand));
+        display:grid;place-items:center;font-size:.7rem}
+  .logo-mark::after{content:'';width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok)}
+  .nav-label{font-size:.66rem;letter-spacing:.13em;text-transform:uppercase;color:var(--faint);padding:12px 10px 6px;font-weight:600}
+  .nav-btn{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:8px 10px;border-radius:8px;
+        color:var(--muted);font-weight:500;font-size:.92rem;transition:background .15s,color .15s}
+  .nav-btn:hover{background:var(--surface);color:var(--text)}
+  .nav-btn.active{background:var(--surface2);color:var(--text)}
+  .nav-btn .dot{margin-left:auto;background:var(--fail);color:#fff;font-size:.66rem;font-weight:600;
+        min-width:17px;height:17px;border-radius:9px;display:grid;place-items:center;padding:0 5px}
+  .nav-ico{width:16px;text-align:center;opacity:.85}
+  .side-foot{margin-top:auto;padding:10px;font-size:.74rem;color:var(--faint);border-top:1px solid var(--line-soft)}
+  .side-foot strong{color:var(--muted);font-weight:600}
+
+  .main{padding:26px 34px 60px;max-width:1180px;width:100%}
+  .topbar{display:flex;align-items:center;gap:12px;margin-bottom:24px;flex-wrap:wrap}
+  .crumb{font-family:var(--font-display);font-weight:600;font-size:1.45rem;letter-spacing:.005em}
+  .crumb .sep{color:var(--faint);font-weight:500;margin:0 6px}
+  .top-actions{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap}
+
+  .btn{padding:8px 14px;border-radius:8px;font-weight:600;font-size:.86rem;border:1px solid var(--line);
+       background:var(--surface);transition:transform .12s,border-color .15s,background .15s;display:inline-flex;align-items:center;gap:7px}
+  .btn:hover{border-color:var(--brand);transform:translateY(-1px)}
+  .btn.primary{background:var(--brand-deep);border-color:var(--brand-deep)}
+  .btn.primary:hover{background:#5B52F0}
+  .btn.danger-ghost{border-color:var(--fail-dim);color:var(--fail)}
+  .btn.tiny{padding:4px 10px;font-size:.78rem;border-radius:6px}
+
+  /* ===== Cards & stats ===== */
+  .card{background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--radius);padding:18px 20px}
+  .stat-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:22px}
+  .stat{background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--radius);padding:14px 16px}
+  .stat .k{font-size:.74rem;color:var(--muted);font-weight:500;letter-spacing:.02em}
+  .stat .v{font-family:var(--font-display);font-weight:700;font-size:1.55rem;margin-top:3px;letter-spacing:.01em}
+  .stat .v small{font-size:.85rem;color:var(--muted);font-weight:500;font-family:var(--font-body)}
+  .stat.alarm{border-color:var(--fail-dim);background:linear-gradient(180deg,rgba(248,113,113,.07),transparent)}
+  .stat.alarm .v{color:var(--fail)}
+  .trend{font-size:.72rem;font-weight:600;margin-top:2px}
+  .trend.up{color:var(--ok)} .trend.flat{color:var(--faint)}
+
+  .section-h{display:flex;align-items:baseline;gap:10px;margin:26px 0 12px}
+  .section-h h2{font-family:var(--font-display);font-size:1.02rem;font-weight:600;letter-spacing:.01em}
+  .section-h .sub{font-size:.8rem;color:var(--faint)}
+
+  /* ===== Health ribbon — the signature ===== */
+  .ribbon{display:flex;gap:2px;align-items:flex-end;height:18px}
+  .ribbon i{flex:1;min-width:3px;border-radius:1.5px;background:var(--ok-dim);height:60%;transition:height .2s}
+  .ribbon i.ok{background:var(--ok);height:100%}
+  .ribbon i.fail{background:var(--fail);height:100%}
+  .ribbon i.stale{background:var(--stale);height:100%}
+  .ribbon i.none{background:var(--line);height:38%}
+  .ribbon i:hover{filter:brightness(1.25)}
+  .ribbon-cap{display:flex;justify-content:space-between;font-size:.64rem;color:var(--faint);
+        font-family:var(--font-mono);margin-top:5px}
+
+  /* ===== Client grid ===== */
+  .client-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+  .client-card{background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--radius);
+        padding:18px 20px;text-align:left;width:100%;transition:border-color .15s,transform .12s;display:block}
+  .client-card:hover{border-color:var(--brand);transform:translateY(-2px)}
+  .cc-head{display:flex;align-items:center;gap:11px;margin-bottom:13px}
+  .avatar{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font-family:var(--font-display);
+        font-weight:700;font-size:.86rem;color:#0D1220}
+  .cc-name{font-weight:600;font-size:.98rem}
+  .cc-meta{font-size:.76rem;color:var(--muted)}
+  .pill{margin-left:auto;font-size:.7rem;font-weight:600;padding:3px 9px;border-radius:20px;letter-spacing:.02em}
+  .pill.ok{background:var(--ok-dim);color:var(--ok)}
+  .pill.fail{background:var(--fail-dim);color:var(--fail)}
+  .pill.stale{background:var(--stale-dim);color:var(--stale)}
+  .cc-stats{display:flex;gap:18px;margin-top:12px;font-size:.78rem;color:var(--muted)}
+  .cc-stats b{color:var(--text);font-weight:600;font-family:var(--font-mono);font-size:.82rem}
+
+  /* ===== Incident strip & table ===== */
+  .inc-strip{border:1px solid var(--fail-dim);background:linear-gradient(90deg,rgba(248,113,113,.09),rgba(248,113,113,.02));
+        border-radius:var(--radius);padding:13px 18px;display:flex;align-items:center;gap:13px;margin-bottom:22px}
+  .pulse{width:9px;height:9px;border-radius:50%;background:var(--fail);position:relative;flex:none}
+  .pulse::after{content:'';position:absolute;inset:-5px;border-radius:50%;border:1.5px solid var(--fail);
+        animation:pulse 1.6s ease-out infinite}
+  @keyframes pulse{from{transform:scale(.5);opacity:.9}to{transform:scale(1.5);opacity:0}}
+  .inc-strip .msg{font-size:.88rem}
+  .inc-strip .msg b{font-weight:600}
+  .inc-strip .when{font-family:var(--font-mono);font-size:.74rem;color:var(--muted);margin-left:auto;flex:none}
+
+  table{width:100%;border-collapse:collapse;font-size:.86rem}
+  th{font-size:.69rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:600;
+        text-align:left;padding:9px 12px;border-bottom:1px solid var(--line-soft)}
+  td{padding:11px 12px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  tbody tr{transition:background .12s}
+  tbody tr:hover{background:rgba(139,147,255,.04)}
+  .mono{font-family:var(--font-mono);font-size:.78rem;color:var(--muted)}
+  .err{font-family:var(--font-mono);font-size:.76rem;color:var(--fail)}
+  .status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:7px;vertical-align:1px}
+  .status-dot.ok{background:var(--ok)} .status-dot.fail{background:var(--fail)} .status-dot.stale{background:var(--stale)}
+  .badge{font-size:.69rem;font-weight:600;padding:2.5px 8px;border-radius:5px;letter-spacing:.03em}
+  .badge.open{background:var(--fail-dim);color:var(--fail)}
+  .badge.acknowledged{background:var(--stale-dim);color:var(--stale)}
+  .badge.resolved{background:var(--ok-dim);color:var(--ok)}
+  .badge.kind{background:var(--surface2);color:var(--muted)}
+
+  /* ===== Toggle ===== */
+  .tog{width:34px;height:19px;border-radius:10px;background:var(--line);position:relative;transition:background .15s;flex:none}
+  .tog::after{content:'';position:absolute;width:13px;height:13px;border-radius:50%;background:#fff;top:3px;left:3px;transition:left .15s}
+  .tog.on{background:var(--brand-deep)} .tog.on::after{left:18px}
+
+  /* ===== Report preview ===== */
+  .email-wrap{background:#E9EBF2;border-radius:var(--radius);padding:34px 20px;display:flex;justify-content:center}
+  .email{background:#fff;color:#1B2235;max-width:560px;width:100%;border-radius:10px;overflow:hidden;
+        font-size:.88rem;box-shadow:0 18px 50px rgba(8,12,30,.45)}
+  .email-head{padding:24px 28px;color:#fff}
+  .email-head .agency{font-family:var(--font-display);font-weight:700;font-size:1.05rem;display:flex;align-items:center;gap:9px}
+  .email-head .period{font-size:.78rem;opacity:.85;margin-top:3px}
+  .email-body{padding:24px 28px}
+  .email h3{font-family:var(--font-display);font-size:1.05rem;margin-bottom:6px;color:#141A2E}
+  .email p{color:#4A5470;font-size:.85rem}
+  .e-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:18px 0}
+  .e-stat{background:#F3F5FA;border-radius:8px;padding:12px 8px;text-align:center}
+  .e-stat .v{font-family:var(--font-display);font-weight:700;font-size:1.25rem;color:#1B2235}
+  .e-stat .k{font-size:.66rem;color:#7A84A2;font-weight:600;letter-spacing:.04em;text-transform:uppercase;margin-top:2px}
+  .e-hero{border-radius:8px;padding:16px;text-align:center;color:#fff;margin:6px 0 18px}
+  .e-hero .v{font-family:var(--font-display);font-weight:700;font-size:1.7rem}
+  .e-hero .k{font-size:.74rem;opacity:.9}
+  .e-row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #EDF0F6;font-size:.82rem}
+  .e-row b{font-weight:600;color:#1B2235}
+  .e-foot{padding:16px 28px 22px;font-size:.72rem;color:#9AA3BD;border-top:1px solid #EDF0F6}
+
+  /* ===== Status page ===== */
+  .sp-wrap{max-width:660px;margin:0 auto}
+  .sp-head{display:flex;align-items:center;gap:13px;margin-bottom:8px}
+  .sp-banner{border-radius:var(--radius);padding:14px 18px;font-weight:600;font-size:.94rem;margin:16px 0 20px;
+        display:flex;align-items:center;gap:10px}
+  .sp-banner.ok{background:var(--ok-dim);color:var(--ok)}
+  .sp-banner.fail{background:var(--fail-dim);color:var(--fail)}
+  .sp-row{padding:15px 0;border-bottom:1px solid var(--line-soft)}
+  .sp-row:last-child{border-bottom:none}
+  .sp-row-top{display:flex;align-items:center;gap:9px;margin-bottom:9px;font-weight:500;font-size:.9rem}
+  .sp-row-top .pct{margin-left:auto;font-family:var(--font-mono);font-size:.76rem;color:var(--muted)}
+  .powered{text-align:center;font-size:.74rem;color:var(--faint);margin-top:22px}
+
+  /* ===== Annotation mode (portfolio case-study layer) ===== */
+  .annot{display:none;border:1px dashed var(--brand);background:rgba(139,147,255,.08);border-radius:9px;
+        padding:11px 14px;font-size:.8rem;color:var(--text);margin:10px 0;line-height:1.55}
+  .annot b{color:var(--brand);font-family:var(--font-mono);font-size:.72rem;letter-spacing:.05em;display:block;margin-bottom:2px}
+  body.annotate .annot{display:block;animation:fadeIn .25s ease}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+  .annot-toggle{position:fixed;right:22px;bottom:22px;z-index:60;background:var(--brand-deep);color:#fff;
+        padding:10px 16px;border-radius:24px;font-weight:600;font-size:.84rem;box-shadow:0 10px 28px rgba(79,70,229,.45);
+        display:flex;gap:8px;align-items:center;transition:transform .12s}
+  .annot-toggle:hover{transform:translateY(-2px)}
+  body.annotate .annot-toggle{background:var(--text);color:var(--bg)}
+
+  /* ===== Toast ===== */
+  .toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,16px);background:var(--raise);
+        border:1px solid var(--line);border-radius:10px;padding:12px 18px;font-size:.86rem;display:flex;gap:10px;
+        align-items:center;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:70;
+        box-shadow:0 14px 40px rgba(5,8,22,.6);max-width:90vw}
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+  .toast .t-dot{width:8px;height:8px;border-radius:50%;background:var(--fail);flex:none}
+  .toast.good .t-dot{background:var(--ok)}
+
+  .proto-note{font-size:.74rem;color:var(--faint);margin-top:34px;border-top:1px solid var(--line-soft);padding-top:14px;line-height:1.6}
+
+  @media (max-width:880px){
+    .shell{grid-template-columns:1fr}
+    .side{position:static;height:auto;flex-direction:row;align-items:center;overflow-x:auto;border-right:none;
+          border-bottom:1px solid var(--line-soft);padding:12px 14px;gap:6px}
+    .logo{padding:0 10px 0 0}
+    .nav-label,.side-foot{display:none}
+    .nav-btn{width:auto;flex:none}
+    .main{padding:20px 16px 70px}
+    .stat-row{grid-template-columns:repeat(2,1fr)}
+    .client-grid{grid-template-columns:1fr}
+    .topbar{gap:8px}
+    .crumb{font-size:1.2rem}
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="side">
+    <div class="logo"><span class="logo-mark"></span>FlowSentry</div>
+    <div class="nav-label">Monitor</div>
+    <button class="nav-btn active" data-view="overview"><span class="nav-ico">◫</span>Overview</button>
+    <button class="nav-btn" data-view="incidents"><span class="nav-ico">▲</span>Incidents<span class="dot" id="incDot">1</span></button>
+    <div class="nav-label">Clients</div>
+    <button class="nav-btn" data-view="reports"><span class="nav-ico">✉</span>Weekly report</button>
+    <button class="nav-btn" data-view="status"><span class="nav-ico">⬡</span>Status page</button>
+    <div class="side-foot"><strong>Brightline Automation</strong><br>Agency plan · 4 clients</div>
+  </aside>
+  <main class="main" id="main"></main>
+</div>
+
+<button class="annot-toggle" id="annotBtn" aria-pressed="false">ⓘ Case study notes</button>
+<div class="toast" id="toast" role="status"><span class="t-dot"></span><span id="toastMsg"></span></div>
+
+<script>
+/* ============ Mock data — Brightline Automation, a 3-person n8n agency ============ */
+const DAYS = 30;
+function hist(pattern){ // pattern: indices from today (0=today) that failed / went stale
+  const a = Array(DAYS).fill('ok');
+  (pattern.fail||[]).forEach(i=>a[DAYS-1-i]='fail');
+  (pattern.stale||[]).forEach(i=>a[DAYS-1-i]='stale');
+  (pattern.none||[]).forEach(i=>a[DAYS-1-i]='none');
+  return a;
+}
+const state = {
+  clients: [
+    { id:'acme', name:'Acme Robotics', color:'#8B93FF', contact:'ops@acmerobotics.com', retainer:'$2,400/mo',
+      workflows:[
+        { id:'wf1', name:'HubSpot → Slack lead router', monitored:true, interval:'≤ 1 h', minsSaved:4,
+          runs7d:312, lastRun:'2 min ago', status:'ok', history:hist({fail:[9]}) },
+        { id:'wf2', name:'Stripe invoice → QuickBooks sync', monitored:true, interval:'≤ 24 h', minsSaved:12,
+          runs7d:21, lastRun:'3 h ago', status:'ok', history:hist({fail:[14,15]}) },
+        { id:'wf3', name:'Typeform intake enrichment (Clearbit)', monitored:true, interval:'—', minsSaved:7,
+          runs7d:64, lastRun:'41 min ago', status:'ok', history:hist({}) },
+        { id:'wf4', name:'Weekly KPI digest → email', monitored:false, interval:'—', minsSaved:25,
+          runs7d:1, lastRun:'2 d ago', status:'ok', history:hist({none:[3,10,17,24]}) },
+      ]},
+    { id:'bloom', name:'Bloom Dental Group', color:'#34D399', contact:'admin@bloomdental.com', retainer:'$1,100/mo',
+      workflows:[
+        { id:'wf5', name:'Appointment reminder SMS (Twilio)', monitored:true, interval:'≤ 6 h', minsSaved:3,
+          runs7d:188, lastRun:'18 min ago', status:'ok', history:hist({fail:[21]}) },
+        { id:'wf6', name:'New-patient form → Dentrix', monitored:true, interval:'—', minsSaved:9,
+          runs7d:42, lastRun:'1 h ago', status:'ok', history:hist({}) },
+        { id:'wf7', name:'Google review request follow-up', monitored:true, interval:'≤ 24 h', minsSaved:5,
+          runs7d:35, lastRun:'5 h ago', status:'ok', history:hist({stale:[6]}) },
+      ]},
+    { id:'harbor', name:'Harbor Logistics', color:'#FBBF24', contact:'it@harborlogistics.co', retainer:'$3,100/mo',
+      workflows:[
+        { id:'wf8', name:'Shipment status scraper → portal', monitored:true, interval:'≤ 1 h', minsSaved:6,
+          runs7d:401, lastRun:'26 h ago', status:'stale', history:hist({stale:[0],fail:[1]}) },
+        { id:'wf9', name:'Carrier invoice OCR → ERP', monitored:true, interval:'≤ 24 h', minsSaved:18,
+          runs7d:19, lastRun:'9 h ago', status:'ok', history:hist({fail:[4]}) },
+        { id:'wf10', name:'Customs doc checklist generator', monitored:true, interval:'—', minsSaved:22,
+          runs7d:11, lastRun:'12 h ago', status:'ok', history:hist({}) },
+      ]},
+    { id:'vista', name:'Vista Realty Partners', color:'#F87171', contact:'team@vistarealty.com', retainer:'$900/mo',
+      workflows:[
+        { id:'wf11', name:'Zillow lead capture → CRM', monitored:true, interval:'≤ 2 h', minsSaved:5,
+          runs7d:97, lastRun:'33 min ago', status:'ok', history:hist({fail:[2,11]}) },
+        { id:'wf12', name:'Listing photo resize + watermark', monitored:true, interval:'—', minsSaved:14,
+          runs7d:28, lastRun:'2 h ago', status:'ok', history:hist({}) },
+      ]},
+  ],
+  incidents: [
+    { id:'inc1', client:'Harbor Logistics', wf:'Shipment status scraper → portal', kind:'stale', status:'open',
+      error:'No runs in 26 h (expected: every 1 h)', count:1, first:'Today, 6:04 AM', age:'4h 12m' },
+    { id:'inc2', client:'Acme Robotics', wf:'Stripe invoice → QuickBooks sync', kind:'failure', status:'resolved',
+      error:'401 Unauthorized — QuickBooks token expired at OAuth2 node', count:2, first:'Jun 8, 11:22 PM', age:'—',
+      resolvedIn:'38 min' },
+    { id:'inc3', client:'Bloom Dental Group', wf:'Google review request follow-up', kind:'stale', status:'resolved',
+      error:'No runs in 25 h (expected: every 24 h)', count:1, first:'Jun 4, 8:10 AM', age:'—', resolvedIn:'2 h 05 m' },
+  ],
+  simCount: 0,
+};
+
+/* ============ Helpers ============ */
+const $ = s => document.querySelector(s);
+const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+const allWfs = () => state.clients.flatMap(c=>c.workflows.map(w=>({...w, client:c})));
+function ribbonHTML(history){
+  return `<div class="ribbon" aria-hidden="true">${history.map(d=>`<i class="${d}"></i>`).join('')}</div>`;
+}
+function clientHealth(c){
+  if (c.workflows.some(w=>w.monitored && w.status==='fail')) return 'fail';
+  if (c.workflows.some(w=>w.monitored && w.status==='stale')) return 'stale';
+  return 'ok';
+}
+function clientSuccess(c){
+  const days = c.workflows.filter(w=>w.monitored).flatMap(w=>w.history);
+  const ran = days.filter(d=>d!=='none');
+  return (100 * ran.filter(d=>d==='ok').length / Math.max(ran.length,1)).toFixed(1);
+}
+function hoursSaved(wfs){
+  return Math.round(wfs.filter(w=>w.monitored).reduce((s,w)=>s + w.runs7d*w.minsSaved, 0)/60);
+}
+function openIncidents(){ return state.incidents.filter(i=>i.status!=='resolved'); }
+function toast(msg, good){
+  const t = $('#toast'); $('#toastMsg').textContent = msg;
+  t.classList.toggle('good', !!good); t.classList.add('show');
+  clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove('show'), 4200);
+}
+function refreshDot(){
+  const n = openIncidents().length, d = $('#incDot');
+  d.textContent = n; d.style.display = n ? 'grid' : 'none';
+}
+
+/* ============ Views ============ */
+const views = {};
+
+views.overview = () => {
+  const wfs = allWfs(), mon = wfs.filter(w=>w.monitored);
+  const runs = mon.reduce((s,w)=>s+w.runs7d,0);
+  const succ = (()=>{ const d = mon.flatMap(w=>w.history).filter(x=>x!=='none');
+    return (100*d.filter(x=>x==='ok').length/Math.max(d.length,1)).toFixed(1); })();
+  const open = openIncidents();
+  const strip = open.length ? `
+    <div class="inc-strip">
+      <span class="pulse"></span>
+      <span class="msg"><b>${open[0].client}</b> — ${esc(open[0].wf)} · <span class="err">${esc(open[0].error)}</span></span>
+      <span class="when">${open[0].age} open</span>
+      <button class="btn tiny" onclick="go('incidents')">View</button>
+    </div>` : '';
+  return `
+    <div class="topbar">
+      <div class="crumb">Overview</div>
+      <div class="top-actions">
+        <button class="btn danger-ghost" onclick="simulateFailure()">⚡ Simulate a failure</button>
+        <button class="btn primary" onclick="go('reports')">Preview client report</button>
+      </div>
+    </div>
+    <div class="annot"><b>NOTE 01 — DEMO HOOK</b>"Simulate a failure" exists only in this prototype. In live demos it compresses the product's core promise — failure → alert → incident — into one click instead of asking a prospect to break their own n8n instance.</div>
+    ${strip}
+    <div class="stat-row">
+      <div class="stat"><div class="k">Workflows monitored</div><div class="v">${mon.length}<small> / ${wfs.length}</small></div><div class="trend flat">across 4 clients</div></div>
+      <div class="stat"><div class="k">Runs · 7 days</div><div class="v">${runs.toLocaleString()}</div><div class="trend up">▲ 8% vs prior week</div></div>
+      <div class="stat"><div class="k">Success rate · 30 d</div><div class="v">${succ}<small>%</small></div><div class="trend flat">target ≥ 99%</div></div>
+      <div class="stat ${open.length?'alarm':''}"><div class="k">Open incidents</div><div class="v">${open.length}</div><div class="trend flat">${open.length? 'needs attention':'all clear'}</div></div>
+      <div class="stat"><div class="k">Hours saved · 7 d</div><div class="v">${hoursSaved(wfs)}<small> h</small></div><div class="trend up">client-facing metric</div></div>
+    </div>
+    <div class="annot"><b>NOTE 02 — METRIC CHOICE</b>"Hours saved" sits in the hero row deliberately: it's the number agencies forward to clients to defend the retainer. Monitoring tools usually stop at uptime; this one is built to renew contracts.</div>
+    <div class="section-h"><h2>Client health</h2><span class="sub">last 30 days · click a client</span></div>
+    <div class="client-grid">
+      ${state.clients.map(c=>{
+        const h = clientHealth(c), mon = c.workflows.filter(w=>w.monitored);
+        const agg = Array(DAYS).fill('ok').map((_,i)=>{
+          const col = mon.map(w=>w.history[i]);
+          return col.includes('fail')?'fail':col.includes('stale')?'stale':col.every(x=>x==='none')?'none':'ok';
+        });
+        return `
+        <button class="client-card" onclick="go('client','${c.id}')">
+          <div class="cc-head">
+            <span class="avatar" style="background:${c.color}">${c.name.split(' ').map(w=>w[0]).slice(0,2).join('')}</span>
+            <span><span class="cc-name">${c.name}</span><br><span class="cc-meta">${mon.length} monitored · ${c.retainer} retainer</span></span>
+            <span class="pill ${h}">${h==='ok'?'Healthy':h==='stale'?'Stale':'Failing'}</span>
+          </div>
+          ${ribbonHTML(agg)}
+          <div class="ribbon-cap"><span>30 d ago</span><span>today</span></div>
+          <div class="cc-stats">
+            <span>Runs 7d <b>${c.workflows.reduce((s,w)=>s+w.runs7d,0)}</b></span>
+            <span>Success <b>${clientSuccess(c)}%</b></span>
+            <span>Saved <b>${hoursSaved(c.workflows)} h</b></span>
+          </div>
+        </button>`;
+      }).join('')}
+    </div>
+    <div class="annot"><b>NOTE 03 — SIGNATURE ELEMENT</b>The 30-day health ribbon is the product's visual identity — one glance answers "is my client okay?" It repeats on every surface (cards, tables, the public status page) so screenshots are recognizable anywhere they're shared.</div>
+    <div class="proto-note">Interactive prototype · mock data · designed &amp; specified by <a href="https://kaziamlan.github.io" target="_blank" rel="noopener">Kazi Amlan</a> — full product spec (schema, API, build plan) available on request. Not affiliated with n8n.</div>`;
+};
+
+views.client = (id) => {
+  const c = state.clients.find(x=>x.id===id) || state.clients[0];
+  return `
+    <div class="topbar">
+      <div class="crumb"><a href="#" onclick="go('overview');return false">Clients</a><span class="sep">/</span>${c.name}</div>
+      <div class="top-actions">
+        <button class="btn" onclick="go('status')">⬡ Status page</button>
+        <button class="btn primary" onclick="go('reports')">Preview report</button>
+      </div>
+    </div>
+    <div class="stat-row" style="grid-template-columns:repeat(4,1fr)">
+      <div class="stat"><div class="k">Monitored workflows</div><div class="v">${c.workflows.filter(w=>w.monitored).length}<small> / ${c.workflows.length}</small></div></div>
+      <div class="stat"><div class="k">Runs · 7 days</div><div class="v">${c.workflows.reduce((s,w)=>s+w.runs7d,0)}</div></div>
+      <div class="stat"><div class="k">Success · 30 d</div><div class="v">${clientSuccess(c)}<small>%</small></div></div>
+      <div class="stat"><div class="k">Hours saved · 7 d</div><div class="v">${hoursSaved(c.workflows)}<small> h</small></div></div>
+    </div>
+    <div class="annot"><b>NOTE 04 — UNIT ECONOMICS ON SCREEN</b>Retainer (${c.retainer}) sits next to hours saved on purpose: the agency owner should be able to see, per client, whether the automation story justifies the invoice.</div>
+    <div class="section-h"><h2>Workflows</h2><span class="sub">toggle monitoring · "expected every" powers silent-failure detection</span></div>
+    <div class="card" style="padding:6px 8px">
+      <table>
+        <thead><tr><th>Workflow</th><th>30-day health</th><th>Last run</th><th>Expected every</th><th>Mins saved/run</th><th>Monitor</th></tr></thead>
+        <tbody>
+          ${c.workflows.map(w=>`
+            <tr>
+              <td><span class="status-dot ${w.status}"></span>${esc(w.name)}</td>
+              <td style="min-width:150px">${ribbonHTML(w.history)}</td>
+              <td class="mono">${w.lastRun}</td>
+              <td class="mono">${w.interval}</td>
+              <td class="mono">${w.minsSaved}</td>
+              <td><button class="tog ${w.monitored?'on':''}" role="switch" aria-checked="${w.monitored}"
+                   aria-label="Monitor ${esc(w.name)}" onclick="toggleMon('${c.id}','${w.id}')"></button></td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div class="annot"><b>NOTE 05 — THE SNEAKY FEATURE</b>"Expected every" catches workflows that stop <i>triggering</i> — schedule disabled, webhook source dead. Those produce no error event at all, so error-based alerting alone (n8n's default) never sees them. Amber in the ribbon = exactly this case.</div>`;
+};
+
+views.incidents = () => `
+    <div class="topbar">
+      <div class="crumb">Incidents</div>
+      <div class="top-actions"><button class="btn danger-ghost" onclick="simulateFailure()">⚡ Simulate a failure</button></div>
+    </div>
+    <div class="annot"><b>NOTE 06 — WORKFLOW, NOT LOG</b>Incidents have a lifecycle (open → acknowledged → resolved) instead of being a raw error feed. Resolution time is captured because it becomes a line in the client report: "3 issues caught, median response 22 min."</div>
+    <div class="card" style="padding:6px 8px">
+      <table>
+        <thead><tr><th>Status</th><th>Client / workflow</th><th>Kind</th><th>Detail</th><th>First seen</th><th></th></tr></thead>
+        <tbody>
+          ${state.incidents.map(i=>`
+            <tr>
+              <td><span class="badge ${i.status}">${i.status}</span></td>
+              <td><b style="font-weight:600">${i.client}</b><br><span class="mono">${esc(i.wf)}</span></td>
+              <td><span class="badge kind">${i.kind}</span></td>
+              <td class="err" style="max-width:240px">${esc(i.error)}${i.resolvedIn?`<br><span class="mono" style="color:var(--ok)">resolved in ${i.resolvedIn}</span>`:''}</td>
+              <td class="mono">${i.first}</td>
+              <td style="white-space:nowrap">
+                ${i.status==='open'?`<button class="btn tiny" onclick="ack('${i.id}')">Acknowledge</button> `:''}
+                ${i.status!=='resolved'?`<button class="btn tiny" onclick="resolve('${i.id}')">Resolve</button>`:''}
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+
+views.reports = () => {
+  const c = state.clients[0];
+  return `
+    <div class="topbar"><div class="crumb">Weekly report<span class="sep">/</span>${c.name}</div>
+      <div class="top-actions"><button class="btn" onclick="toast('Report queued — arrives Monday 8:00 AM', true)">Send test email</button></div>
+    </div>
+    <div class="annot"><b>NOTE 07 — WHITE-LABEL = UPGRADE DRIVER</b>This email goes out under <i>Brightline's</i> name, not FlowSentry's. White-labeling is gated to the $79 Agency plan because it's the feature agencies actually buy — the report is the artifact that renews their retainer.</div>
+    <div class="email-wrap">
+      <div class="email">
+        <div class="email-head" style="background:linear-gradient(135deg,#4F46E5,#7C74FF)">
+          <div class="agency"><span style="width:20px;height:20px;border-radius:6px;background:#fff3;display:inline-block"></span>Brightline Automation</div>
+          <div class="period">Automation report for ${c.name} · Jun 2 – Jun 8, 2026</div>
+        </div>
+        <div class="email-body">
+          <h3>Your automations, this week</h3>
+          <p>Everything we run for ${c.name} — at a glance.</p>
+          <div class="e-hero" style="background:linear-gradient(135deg,#10B981,#34D399)">
+            <div class="v">${hoursSaved(c.workflows)} hours</div>
+            <div class="k">of manual work saved this week</div>
+          </div>
+          <div class="e-stats">
+            <div class="e-stat"><div class="v">${c.workflows.reduce((s,w)=>s+w.runs7d,0)}</div><div class="k">Runs</div></div>
+            <div class="e-stat"><div class="v">${clientSuccess(c)}%</div><div class="k">Success</div></div>
+            <div class="e-stat"><div class="v">1</div><div class="k">Issue fixed</div></div>
+          </div>
+          <div class="e-row"><span>HubSpot → Slack lead router</span><b>312 runs</b></div>
+          <div class="e-row"><span>Typeform intake enrichment</span><b>64 runs</b></div>
+          <div class="e-row"><span>Stripe → QuickBooks sync</span><b>21 runs</b></div>
+          <p style="margin-top:16px;font-size:.8rem">One issue was detected and resolved in 38 minutes — a QuickBooks credential refresh — before any invoices were missed.</p>
+        </div>
+        <div class="e-foot">Sent by Brightline Automation · reply to this email to reach your automation team</div>
+      </div>
+    </div>`;
+};
+
+views.status = () => {
+  const c = state.clients[1];
+  const anyBad = clientHealth(c)!=='ok';
+  return `
+    <div class="topbar"><div class="crumb">Status page<span class="sep">/</span>public view</div>
+      <div class="top-actions"><button class="btn" onclick="toast('Link copied — share it with your client', true)">Copy public link</button></div>
+    </div>
+    <div class="annot"><b>NOTE 08 — THE GROWTH LOOP</b>This page is public and tokenized — the agency's client bookmarks it. On the $29 Solo plan it carries "Monitored by FlowSentry," turning every end-client into a distribution channel; white-label removes it on paid-up tiers.</div>
+    <div class="card sp-wrap">
+      <div class="sp-head">
+        <span class="avatar" style="background:${c.color}">BD</span>
+        <div><div style="font-family:var(--font-display);font-weight:600">${c.name}</div>
+        <div class="cc-meta">Automation status · maintained by Brightline Automation</div></div>
+      </div>
+      <div class="sp-banner ${anyBad?'fail':'ok'}">${anyBad?'⚠ One workflow needs attention':'✓ All systems operational'}</div>
+      ${c.workflows.map(w=>`
+        <div class="sp-row">
+          <div class="sp-row-top"><span class="status-dot ${w.status}"></span>${esc(w.name)}
+            <span class="pct">${(100*w.history.filter(d=>d==='ok').length/DAYS).toFixed(1)}% · 30 d</span></div>
+          ${ribbonHTML(w.history)}
+          <div class="ribbon-cap"><span>30 days ago</span><span>today</span></div>
+        </div>`).join('')}
+      <div class="powered">Monitored by <b>FlowSentry</b> · updated 2 minutes ago</div>
+    </div>`;
+};
+
+/* ============ Interactions ============ */
+let current = ['overview'];
+function render(){ $('#main').innerHTML = views[current[0]](current[1]); window.scrollTo({top:0}); }
+function go(view, arg){ current = [view, arg];
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active', b.dataset.view===view));
+  render(); }
+document.querySelectorAll('.nav-btn').forEach(b=>b.addEventListener('click', ()=>go(b.dataset.view)));
+
+function toggleMon(cid, wid){
+  const w = state.clients.find(c=>c.id===cid).workflows.find(w=>w.id===wid);
+  w.monitored = !w.monitored;
+  toast(w.monitored ? `Monitoring on — ${w.name}` : `Monitoring paused — ${w.name}`, w.monitored);
+  render();
+}
+function ack(id){ const i = state.incidents.find(x=>x.id===id); i.status='acknowledged';
+  toast(`Acknowledged — ${i.wf}`, true); refreshDot(); render(); }
+function resolve(id){ const i = state.incidents.find(x=>x.id===id); i.status='resolved'; i.resolvedIn='12 min';
+  toast(`Resolved — ${i.wf}`, true); refreshDot(); render(); }
+
+function simulateFailure(){
+  state.simCount++;
+  const c = state.clients[0], w = c.workflows[0];
+  w.status='fail'; w.history[DAYS-1]='fail'; w.lastRun='just now';
+  state.incidents.unshift({ id:'sim'+state.simCount, client:c.name, wf:w.name, kind:'failure', status:'open',
+    error:'429 Too Many Requests — Slack node rate-limited (retry 3/3 failed)', count:1, first:'Just now', age:'0 m' });
+  refreshDot(); render();
+  toast(`🔴 ${c.name} — ${w.name} failed · alert sent to #ops-alerts`);
+}
+
+$('#annotBtn').addEventListener('click', ()=>{
+  const on = document.body.classList.toggle('annotate');
+  $('#annotBtn').setAttribute('aria-pressed', on);
+  $('#annotBtn').textContent = on ? '✕ Hide case study notes' : 'ⓘ Case study notes';
+});
+
+refreshDot(); render();
+</script>
+</body>
+</html>
